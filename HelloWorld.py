@@ -1,6 +1,6 @@
 from bottle import route, run, request
 from collections import OrderedDict
-
+import re
 dict = {}
 
 @route('/')
@@ -9,27 +9,43 @@ def hello():
         <br><br><br>
         <br><br><br>
         <br><br><br>
-        <body bgcolor = "#C39BD3">
+        <style>
+        table {
+        border-collapse: collapse;
+        border: 1px solid black;
+        }
+        th, td {
+        padding: 10px;
+        }
+        #searchbar {
+        font-size: 30px;
+        width: 600px;
+        }
+        #button {
+        width: 60px;
+        font-size: 25px;
+        }
+        </style>
+        <body bgcolor = "#F0B27A">
         <center>
-        <h1>
-        Search Engine Title
-        </h1>
+        <img src = "https://www.tualatinoregon.gov/sites/default/files/styles/gallery500/public/imageattachments/library/page/4275/magnifying_glass.png?itok=JPv0DBKq" alt = "logo.gif" style = "width:506px;height:197px;background-color:#F0B27A;"/>
+        <br> <br>
         <form action = "/search" method = "get">
-        <input name = "keywords" type = "text">
-        <input type = "submit" value = "Search">
+        <input id = "searchbar" name = "keywords" type = "text">
+        <input id = "button" type = "submit" value = "Search">
         <br>
         </form>
         </center>
         '''
     if bool(dict):
         i=0
-        history = ['<center><table id = "history">']
+        history = ['<center><br><br><b>Search History:</b><br><br><table id = "history">']
         history.append('<tr><td><b> Word </b></td>')
         history.append('<td><b> Count </b></td></tr>')
         for k in sorted(dict,key=dict.get,reverse=True):
             if i<20:
-                history.append('<tr><td> %s </td>' % k)
-                history.append('<td> %d </td></tr>' % dict[k])
+                history.append('<tr><td align="center"> %s </td>' % k)
+                history.append('<td align="center"> %d </td></tr>' % dict[k])
                 i += 1
         history.append('</table></center>')
         return f, '\n'.join(history)
@@ -39,24 +55,45 @@ def hello():
 @route('/search', method='GET')
 def search():
     string = request.query['keywords']
-    l = string.lower().split()
+    string = re.sub(r'[^\w\s]','',string)   #filter punctuation
+    l = string.lower().split()              #split by whitespaces
     cur = OrderedDict()
     updateHistory(l,cur)
     updateHistory(l,dict)
     
-    back = '<form action = "/"> <input type = "submit" value = "Back"> </form>'
+    back = '<br><br><center><form action = "/"> <input id = "button" type = "submit" value = "Back"> </form></center>'
     
     if len(l)>1:
-        results = ['<body bgcolor = "#C39BD3"> <table id = "results">']
+        results = ['''
+            <center>
+            <style>
+            table {
+                border-collapse: collapse;
+                border: 1px solid black; 
+            }
+            th, td {
+            padding: 10px;
+            }
+            #button {
+            width: 60px;
+            font-size: 25px;
+            }
+            </style>
+            <br><b>Results:</b><br><br>
+            <body bgcolor = "#F0B27A">
+            <table id = "results">
+            ''']
+        out = '<center><br><br> Number of words in search phrase: '+str(len(l))+'</center>'
         results.append('<tr><td><b> Word </b></td>')
         results.append('<td><b> Count </b></td></tr>')
         for k in cur:
-            results.append('<tr><td> %s </td>' % k)
-            results.append('<td> %d </td></tr>' % cur[k])
-        results.append('</table>')
-        return string, '\n'.join(results), back
+            results.append('<tr><td align="center"> %s </td>' % k)
+            results.append('<td align="center"> %d </td></tr>' % cur[k])
+        results.append('</table></center>')
+        string = '<center><br><br><br><br><br><br><br><br><br>'+string+'</center>'
+        return string, out, '\n'.join(results), back
     else:
-        string = '<body bgcolor = "#C39BD3">'+string + '</body>'
+        string = '<center><br><br><br><br><br><br><br><br><br><body bgcolor = "#F0B27A">'+string + '</body></center>'
         return string, back
 
 def updateHistory(l,dict):
