@@ -34,6 +34,8 @@ def attr(elem, attr):
         return ""
 
 WORD_SEPARATORS = re.compile(r'\s|\n|\r|\t|[^a-zA-Z0-9\-_]')
+
+#declared global dictionaries for creating inverted index which maps word ids to corresponding set of doc ids, word id to word (string) and url doc id to url/doc (string) 
 INVERTED_INDEX = {}
 WORD_DICT = {}
 URLDOC_DICT = {}
@@ -132,6 +134,7 @@ class crawler(object):
         and then returns that newly inserted document's id."""
         ret_id = self._mock_next_doc_id
         self._mock_next_doc_id += 1
+	#added the inserted document entry to the URLDOC_DICT
         URLDOC_DICT[ret_id]=url
         return ret_id
     
@@ -141,6 +144,7 @@ class crawler(object):
         and then returns that newly inserted word's id."""
         ret_id = self._mock_next_word_id
         self._mock_next_word_id += 1
+	#added the inserted word entry to the WORD_DICT
         WORD_DICT[ret_id]=word
         return ret_id
     
@@ -219,9 +223,9 @@ class crawler(object):
         # TODO: knowing self._curr_doc_id and the list of all words and their
         #       font sizes (in self._curr_words), add all the words into the
         #       database for this document
+	# Implemented code to add entry into the inverted index for each word to their documents
         for word in self._curr_words:
             current_word_index = word[0]
-            #print current_word_index
             if current_word_index in INVERTED_INDEX:
                 INVERTED_INDEX[current_word_index].add(self._curr_doc_id)
             else:
@@ -308,9 +312,11 @@ class crawler(object):
                 self._add_text(tag)
 
     def get_inverted_index(self):
+	# returns the INVERTED_INDEX dictionary containing mappings of word ids to their corresponding set of document ids of url pages in which the word exists
         return INVERTED_INDEX
 
     def get_resolved_inverted_index(self):
+	# creates, inserts mappings of actual word (strings) to the corresponding set of urls/documents (string) in which the word exists in the resolved_inverted_index dictionary and returns it
         resolved_inverted_index = {}
         for word_index in INVERTED_INDEX:
             current_word_index = word_index
@@ -327,9 +333,7 @@ class crawler(object):
         print "in crawl"
         print len(self._url_queue)
         while len(self._url_queue):
-            #print "inside while loop"
             url, depth_ = self._url_queue.pop()
-            #print url
             # skip this url; it's too deep
             if depth_ > depth:
                 continue
@@ -366,6 +370,7 @@ class crawler(object):
 if __name__ == "__main__":
     bot = crawler(None, "urls.txt")
     bot.crawl(depth=1)
+    #printing the inverted and resolved inverted index dictionaries
     print bot.get_inverted_index()
     print bot.get_resolved_inverted_index()
     

@@ -1,0 +1,58 @@
+Instructions and Explanation of Implementation
+
+A. Frontend:
+1. In terminal, cd to directory with Lab1.py and run command: python Lab1.py
+2. MAKE SURE AN INTERNET CONNECTION IS AVAILABLE (Logo will not be visible without it - logo is also attached with the submission).
+3. Type search word/phrase in the search box and press search button to see the results.
+4. To return to the query page and view the top 20 searched words table, USE THE BACK BUTTON.
+
+
+B. Backend:
+1. Make sure that Bottle and Beautiful Soup are both installed on the machine.
+	Eg. cd into respective library folders and run python setup.py install --user
+2. Testing procedure for Crawler:
+	Step 1: run TestCrawler.py from terminal to start the bottle test web application at localhost at port 8080
+	Step 2: run crawler from another terminal using the command : python crawler.py
+   The program prints 
+	a) the inverted index which maps word ids with its corresponding set of document ids in which the word exists. 
+	b) the resolved inverted index which maps actual words with its corresponding set of document (urls) in which the 		   word exists.
+
+B1.Expected output for crawler.py when TestCrawler.py is running:
+[sarmaraj@p42 CSC326SearchEngine-master]$ python crawler.py
+in crawl
+1
+    num words=11
+    url='http://localhost:8080/'
+    num words=3
+    url=u'http://localhost:8080/search'
+{1: set([1]), 2: set([1, 2]), 3: set([1]), 4: set([1]), 5: set([1]), 6: set([1]), 7: set([1]), 8: set([1]), 9: set([1]), 10: set([1]), 11: set([1]), 12: set([2])}
+{'engine': set(['http://localhost:8080/']), 'search': set(['http://localhost:8080/']), 'for': set(['http://localhost:8080/']), 'testing': set(['http://localhost:8080/', 'http://localhost:8080/search']), 'programming': set(['http://localhost:8080/']), 'second': set(['http://localhost:8080/']), 'languages': set(['http://localhost:8080/']), 'lab1': set(['http://localhost:8080/']), 'computer': set(['http://localhost:8080/search']), 'csc326': set(['http://localhost:8080/']), 'page': set(['http://localhost:8080/']), 'crawler': set(['http://localhost:8080/'])}
+[sarmaraj@p42 CSC326SearchEngine-master]$ 
+
+
+B2.Explanation of output:
+First page contains the words/phrases: Crawler, Testing, for search engine, Lab1, Programming Languages CSC326, Second Page (which contains link to a second HTML page at http://localhost:8080/search)
+Second page contains the words/phrases: Testing, testing, Languages
+
+	Proof of correctness of the crawler:
+	Resolved Inverted Index:
+	the word testing appears three times (Testing - Page 1 and 2, testing- page 2). As we can see from the output of the resolved inverted index, the word "testing" is mapped to a url of the pages it occurs on. Hence the set of urls mapped to 'testing': set(['http://localhost:8080/', 'http://localhost:8080/search']). Similarly, the other words can be verified.
+
+	Inverted Index:
+	In this example, the word "testing" is the only word that appears more than once across the two pages as is identified here by word id=2 in the output. The word id = 2 is mapped to two document ids : 1 and 2 which is as expected since testing exists on pages => 2: set([1, 2]). Similarly, the other words can be verified.
+
+B3. Changes implemented in backend
+3.1 crawler.py:
+   a) Created three global dictionaries: INVERTED_INDEX which stores the word id as key and set of document ids containing the word as value, WORD_DICT which stores word id as key and word as value, URLDOC_DICT which stores doc id as key and document/url as value.
+   b) Modified methods _mock_insert_word and _mock_insert_document for adding words, documents and their correspondings ids in the above declared dictionaries WORD_DICT and URLDOC_DICT
+   c) Implemented code for creating and saving entries in the INVERTED_INDEX dictionary in method _add_words_to_document
+   d) Implemented two new methods:
+	1) get_inverted_index() for returning the INVERTED_INDEX dictionary
+	2) get_resolved_inverted_index which creates a resolved_inverted_index dictionary and uses the INVERTED_INDEX, WORD_DICT and URLDOC_DICT for creating its entries where the key is the actual word (in string) and is mapped to a set of documents (urls in string) in which the word exists
+
+   e) Made changes in if __name__ == "__main__"
+      Added two lines print bot.get_inverted_index() and print bot.get_resolved_inverted_index() to print the inverted index and the resolved inverted index dictionaries 
+3.2 urls.txt: 
+   a) contains the url to be used in the crawler
+3.3 bottle application- TestCrawler.py
+   a) creating a html page with 11 words and a link to another html page with 3 words for the purpose of testing

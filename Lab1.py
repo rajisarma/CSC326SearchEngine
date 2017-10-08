@@ -76,7 +76,7 @@ def search():
             padding: 10px;
             }
             #button {
-            width: 60px;
+            width: 70px;
             font-size: 20px;
             }
             </style>
@@ -91,10 +91,10 @@ def search():
             results.append('<tr><td align="center"> %s </td>' % k)
             results.append('<td align="center"> %d </td></tr>' % cur[k])
         results.append('</table></center>')
-        string = '<center><br><br><br><br><br><br><br><br><br>'+string+'</center>'
+        string = '<center><br><br><br><br><br><br><br><br><br> Search query: '+string+'</center>'
         return string, out, '\n'.join(results), back
     else:
-        string = '<center><br><br><br><br><br><br><br><br><br><body bgcolor = "#F0B27A">'+string + '</body></center>'
+        string = '<center><br><br><br><br><br><br><br><br><br><style>#button {width: 70px;font-size: 20px;}</style><body bgcolor = "#F0B27A">  Search query: '+string + '</body></center>'
         return string, back
 
 def updateHistory(l,dict):
