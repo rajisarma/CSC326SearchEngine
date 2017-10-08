@@ -6,16 +6,24 @@ dict = {}
 @route('/')
 def hello():
     f ='''
+        <br><br><br>
+        <br><br><br>
+        <br><br><br>
+        <body bgcolor = "#C39BD3">
+        <center>
+        <h1>
+        Search Engine Title
+        </h1>
         <form action = "/search" method = "get">
         <input name = "keywords" type = "text">
-        <br> <b>
         <input type = "submit" value = "Search">
-        </b> <br>
+        <br>
         </form>
+        </center>
         '''
     if bool(dict):
         i=0
-        history = ['<table id = "history">']
+        history = ['<center><table id = "history">']
         history.append('<tr><td><b> Word </b></td>')
         history.append('<td><b> Count </b></td></tr>')
         for k in sorted(dict,key=dict.get,reverse=True):
@@ -23,7 +31,7 @@ def hello():
                 history.append('<tr><td> %s </td>' % k)
                 history.append('<td> %d </td></tr>' % dict[k])
                 i += 1
-        history.append('</table>')
+        history.append('</table></center>')
         return f, '\n'.join(history)
     else:
         return f
@@ -35,17 +43,21 @@ def search():
     cur = OrderedDict()
     updateHistory(l,cur)
     updateHistory(l,dict)
-    if len(cur)>1:
-        results = ['<table id = "results">']
+    
+    back = '<form action = "/"> <input type = "submit" value = "Back"> </form>'
+    
+    if len(l)>1:
+        results = ['<body bgcolor = "#C39BD3"> <table id = "results">']
         results.append('<tr><td><b> Word </b></td>')
         results.append('<td><b> Count </b></td></tr>')
         for k in cur:
             results.append('<tr><td> %s </td>' % k)
             results.append('<td> %d </td></tr>' % cur[k])
         results.append('</table>')
-        return string, '\n'.join(results)
+        return string, '\n'.join(results), back
     else:
-        return string
+        string = '<body bgcolor = "#C39BD3">'+string + '</body>'
+        return string, back
 
 def updateHistory(l,dict):
     for i in l:
