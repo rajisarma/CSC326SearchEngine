@@ -1,12 +1,37 @@
-from bottle import route, run, request
+from bottle import *#route, run, request
 from collections import OrderedDict
 import re
-dict = {}
+from oauth2client.client import OAuth2WebServerFlow
+from oauth2client.client import flow_from_clientsecrets
+from googleapiclient.errors import HttpError
+from googleapiclient.discovery import build
+import httplib2
+import json
+from string import Template
 
-@route('/')
-def query():
+with open("client_secrets.json") as json_file:
+	client_secrets = json.load(json_file)
+	CLIENT_ID = client_secrets["web"]["client_id"]
+	CLIENT_SECRET = client_secrets["web"]["client_secret"]
+	SCOPE = client_secrets["web"]["auth_uri"]
+	REDIRECT_URI = client_secrets["web"]["redirect_uris"][0]
+	GOOGLE_SCOPE = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email'
+
+
+#client_secret_32260906646-itk4t0fnd2hebri613449nb7i4s1fiqj.apps.googleusercontent.com
+dict = {}
+logged_in = 'Login'
+
+@route('/', 'GET')
+
+def main():
 #CSS formatting for the query page
     f ='''
+	<div align = "right">
+	<form action = "/login" method = "get">
+        <input id = "signin" type = "submit" value = $logged_in>
+        </form>
+	</div>
         <br><br><br>
         <br><br><br>
         <br><br><br>
@@ -26,6 +51,10 @@ def query():
         width: 85px;
         font-size: 20px;
         }
+	#signin {
+        width: 150px;
+        font-size: 20px;
+        }
         </style>
         <body bgcolor = "#F0B27A">
         <center>
@@ -38,6 +67,7 @@ def query():
         </form>
         </center>
         '''
+    f = Template(f).safe_substitute(logged_in = logged_in)
     if bool(dict):
         i=0
         history = ['<center><br><br><b>Search History:</b><br><br><table id = "history">']
@@ -52,6 +82,42 @@ def query():
         return f, '\n'.join(history)
     else:
         return f
+
+
+@route('/login', 'GET')
+
+def login():
+	global logged_in
+	if logged_in == "Login":
+		flow = flow_from_clientsecrets("client_secrets.json",scope = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email', redirect_uri = "http://localhost:8080/redirect")
+		uri = flow.step1_get_authorize_url()
+		redirect(str(uri))
+	else:
+		pass
+#logout and redirect back to main
+#clear cache?
+
+
+@route('/redirect')
+
+def redirect_page():
+	global logged_in
+	code = request.query.get('code','')
+
+	flow = OAuth2WebServerFlow(client_id = CLIENT_ID, client_secret = CLIENT_SECRET, scope = GOOGLE_SCOPE, redirect_uri = REDIRECT_URI)
+	credentials = flow.step2_exchange(code)
+	token = credentials.id_token['sub']
+
+	http = httplib2.Http()
+	http = credentials.authorize(http)
+
+	users_service = build('oauth2', 'v2', http=http)
+	user_document = users_service.userinfo().get().execute()
+	user_email = user_document['email']
+	logged_in = 'Logout'
+	return main()
+
+@route('/logout', method='GET')
 
 @route('/search', method='GET')
 def search():
@@ -79,6 +145,10 @@ def search():
             width: 70px;
             font-size: 20px;
             }
+	    #signin {
+            width: 150px;
+            font-size: 20px;
+            }
             </style>
             <br><b>Results:</b><br><br>
             <body bgcolor = "#F0B27A">
@@ -91,10 +161,32 @@ def search():
             results.append('<tr><td align="center"> %s </td>' % k)
             results.append('<td align="center"> %d </td></tr>' % cur[k])
         results.append('</table></center>')
-        string = '<center><br><br><br><br><br><br><br><br><br> Search query: '+string+'</center>'
+        string = '''
+		<div align = "right">
+		<form action = "/login" method = "get">
+        	<input id = "signin" type = "submit" value = $logged_in>
+        	</form>
+		</div>
+		<center>
+		<br><br><br>
+		<br><br><br>
+		<br><br><br> 
+		Search query: ''' +string+ '''</center>'''
+	string = Template(string).safe_substitute(logged_in = logged_in)
         return string, out, '\n'.join(results), back
     else:
-        string = '<center><br><br><br><br><br><br><br><br><br><style>#button {width: 70px;font-size: 20px;}</style><body bgcolor = "#F0B27A">  Search query: '+string + '</body></center>'
+        string = '''
+		<center>
+		<br><br><br>
+		<br><br><br>
+		<br><br><br>
+		<style>
+		#button {
+		width: 70px;
+		font-size: 20px;
+		}
+		</style>
+		<body bgcolor = "#F0B27A">  Search query: ''' +string + '''</body></center>'''
         return string, back
 
 def updateHistory(l,dict):
