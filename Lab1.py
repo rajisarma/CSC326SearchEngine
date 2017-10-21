@@ -18,20 +18,35 @@ with open("client_secrets.json") as json_file:
 	GOOGLE_SCOPE = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email'
 
 
-#client_secret_32260906646-itk4t0fnd2hebri613449nb7i4s1fiqj.apps.googleusercontent.com
+#maintain across sessions:
+#map search history to user individual dict
+#10 most recently searched (stack?)
+
 dict = {}
 logged_in = 'Login'
+user_email = ''
 
 @route('/', 'GET')
 
 def main():
 #CSS formatting for the query page
-    f ='''
+    sign_in = '''
 	<div align = "right">
 	<form action = "/login" method = "get">
-        <input id = "signin" type = "submit" value = $logged_in>
+        <input id = "signin" type = "submit" value = "Sign In">
         </form>
 	</div>
+	'''
+    sign_out = '''
+	<div align = "right">
+	<h3>Welcome, $user_email</h3>
+	<form action = "/logout" method = "get">
+        <input id = "signin" type = "submit" value = "Sign Out">
+        </form>
+	</div>
+	'''
+    sign_out = Template(sign_out).safe_substitute(user_email = user_email)
+    f ='''
         <br><br><br>
         <br><br><br>
         <br><br><br>
@@ -67,7 +82,6 @@ def main():
         </form>
         </center>
         '''
-    f = Template(f).safe_substitute(logged_in = logged_in)
     if bool(dict):
         i=0
         history = ['<center><br><br><b>Search History:</b><br><br><table id = "history">']
@@ -79,9 +93,15 @@ def main():
                 history.append('<td align="center"> %d </td></tr>' % dict[k])
                 i += 1
         history.append('</table></center>')
-        return f, '\n'.join(history)
+	if logged_in == 'Logout':
+	        return sign_out, f, '\n'.join(history)
+	else:
+		return sign_in, f
     else:
-        return f
+	if logged_in == 'Logout':
+		return sign_out, f
+	else:
+        	return sign_in, f
 
 
 @route('/login', 'GET')
@@ -93,15 +113,15 @@ def login():
 		uri = flow.step1_get_authorize_url()
 		redirect(str(uri))
 	else:
-		pass
-#logout and redirect back to main
-#clear cache?
+		logout()
 
 
 @route('/redirect')
-
 def redirect_page():
 	global logged_in
+	global user_email
+	global token
+	global http
 	code = request.query.get('code','')
 
 	flow = OAuth2WebServerFlow(client_id = CLIENT_ID, client_secret = CLIENT_SECRET, scope = GOOGLE_SCOPE, redirect_uri = REDIRECT_URI)
@@ -114,22 +134,50 @@ def redirect_page():
 	users_service = build('oauth2', 'v2', http=http)
 	user_document = users_service.userinfo().get().execute()
 	user_email = user_document['email']
+	#for i in user_document:
+	#	print i, user_document[i]
 	logged_in = 'Logout'
 	return main()
 
+
 @route('/logout', method='GET')
+def logout():
+	global logged_in
+	logged_in = 'Login'
+	user_email = ''
+	redirect("https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080")
+	return main()
+
 
 @route('/search', method='GET')
 def search():
+    global logged_in
     string = request.query['keywords']
     string = re.sub(r'[^\w\s]','',string)   #filter punctuation
     l = string.lower().split()              #split by whitespaces
     cur = OrderedDict()
     updateHistory(l,cur)
-    updateHistory(l,dict)
+    if logged_in == 'Logout':
+    	updateHistory(l,dict)
     
     back = '<br><br><center><form action = "/"> <input id = "button" type = "submit" value = "Back"> </form></center>'
     #CSS formatting for results page
+    sign_in = '''
+	<div align = "right">
+	<form action = "/login" method = "get">
+        <input id = "signin" type = "submit" value = "Sign In">
+        </form>
+	</div>
+	'''
+    sign_out = '''
+	<div align = "right">
+	<h3>Welcome, $user_email</h3>
+	<form action = "/logout" method = "get">
+        <input id = "signin" type = "submit" value = "Sign Out">
+        </form>
+	</div>
+	'''
+    sign_out = Template(sign_out).safe_substitute(user_email = user_email)
     if len(l)>1:
         results = ['''
             <center>
@@ -162,20 +210,23 @@ def search():
             results.append('<td align="center"> %d </td></tr>' % cur[k])
         results.append('</table></center>')
         string = '''
-		<div align = "right">
-		<form action = "/login" method = "get">
-        	<input id = "signin" type = "submit" value = $logged_in>
-        	</form>
-		</div>
 		<center>
 		<br><br><br>
 		<br><br><br>
 		<br><br><br> 
 		Search query: ''' +string+ '''</center>'''
-	string = Template(string).safe_substitute(logged_in = logged_in)
-        return string, out, '\n'.join(results), back
+	if logged_in == "Logout":
+	        return sign_out, string, out, '\n'.join(results), back
+	else:
+	        return sign_in, string, out, '\n'.join(results), back
     else:
         string = '''
+		<style>
+	        #signin {
+	        width: 150px;
+		font-size: 20px;
+		}
+		</style>
 		<center>
 		<br><br><br>
 		<br><br><br>
@@ -187,7 +238,10 @@ def search():
 		}
 		</style>
 		<body bgcolor = "#F0B27A">  Search query: ''' +string + '''</body></center>'''
-        return string, back
+	if logged_in == "Logout":
+	        return sign_out, string, back
+	else:
+	        return sign_in, string, back
 
 def updateHistory(l,dict):
 #inputs: a list to process and a dictionary
