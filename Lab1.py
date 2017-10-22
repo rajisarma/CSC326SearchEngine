@@ -9,6 +9,16 @@ import httplib2
 import json
 from string import Template
 
+#for localhost
+#MAIN = "http://localhost:8080/redirect"
+#for AWS instance
+MAIN = "http://0.0.0.0:80/redirect"
+
+#for localhost:
+#HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080"
+HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://0.0.0.0:80"
+
+
 #from json file, get values needed to start login process
 with open("client_secrets.json") as json_file:
 	client_secrets = json.load(json_file)
@@ -142,7 +152,7 @@ def main():
 def login():
 	global logged_in
 	if logged_in == "Login":
-		flow = flow_from_clientsecrets("client_secrets.json",scope = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email', redirect_uri = "http://localhost:8080/redirect")
+		flow = flow_from_clientsecrets("client_secrets.json",scope = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email', redirect_uri = MAIN)
 		uri = flow.step1_get_authorize_url()
 		redirect(str(uri))
 	else:
@@ -188,7 +198,7 @@ def logout():
 	user_email = ''
 	dict = {}
 	last10 = []
-	redirect("https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080")
+	redirect(HOME_LINK)
 	return main()
 
 
@@ -313,5 +323,6 @@ def updateLast10(l, last10):
 			print last10
 			last10.append(i)
 
+run(host='0.0.0.0',port=80, debug=True)
 #run localhost
-run(host='localhost', port=8080, debug=True)
+#run(host='localhost', port=8080, debug=True)
