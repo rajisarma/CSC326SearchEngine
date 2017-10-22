@@ -9,6 +9,7 @@ import httplib2
 import json
 from string import Template
 
+#from json file, get values needed to start login process
 with open("client_secrets.json") as json_file:
 	client_secrets = json.load(json_file)
 	CLIENT_ID = client_secrets["web"]["client_id"]
@@ -16,11 +17,6 @@ with open("client_secrets.json") as json_file:
 	SCOPE = client_secrets["web"]["auth_uri"]
 	REDIRECT_URI = client_secrets["web"]["redirect_uris"][0]
 	GOOGLE_SCOPE = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email'
-
-
-#maintain across sessions:
-#map search history to user individual dict
-#10 most recently searched (stack?)
 
 cache = {}
 dict = {}
@@ -35,6 +31,7 @@ pic_link = ''
 
 def main():
 #CSS formatting for the query page
+#sign in button
     sign_in = '''
 	<div align = "right">
 	<form action = "/login" method = "get">
@@ -42,6 +39,7 @@ def main():
         </form>
 	</div>
 	'''
+#sign out button (displays when user is logged in, along with user's google profile picture)
     sign_out = '''
 	<div align = "right">
 	<h3>Welcome, $user_name</h3>
@@ -53,12 +51,14 @@ def main():
 	</div>
 	'''
     sign_out = Template(sign_out).safe_substitute(user_name = user_name, pic_link = pic_link)
+#search bar and search button
     f ='''
         <br><br><br><br>
         <style>
         table {
         border-collapse: collapse;
         border: 1px solid black;
+	display: inline-block;
         }
         th, td {
         padding: 10px;
@@ -87,26 +87,28 @@ def main():
         </form>
         </center>
         '''
-
+#if most searched table contains values and user is logged in, display table
     if bool(dict) and logged_in == 'Logout':
         i=0
         history = ['<center><br><br><b>Search History:</b><br><br><table id = "history">']
-        history.append('<tr><td><b> Word </b></td>')
-        history.append('<td><b> Count </b></td></tr>')
+        history.append('<tr><td align="center"><b> Word </b></td>')
+        history.append('<td align="center"><b> Count </b></td></tr>')
         for k in sorted(dict,key=dict.get,reverse=True):	#display top 20 searches on query page
             if i<20:
                 history.append('<tr><td align="center"> %s </td>' % k)
                 history.append('<td align="center"> %d </td></tr>' % dict[k])
                 i += 1
-        history.append('</table></center>')
+        history.append('</table><center>')
 
+#if recent search table contains values and user is logged in, display table by printing list in reverse to put the most recently searched word first
 	if len(last10)>0:
 		recent = ['''
             <center>
             <style>
             table {
                 border-collapse: collapse;
-                border: 1px solid black; 
+                border: 1px solid black;
+		display: inline-block;
             }
             th, td {
             padding: 10px;
@@ -116,7 +118,7 @@ def main():
             <body bgcolor = "#F0B27A">
             <table id = "recent">
             ''']
-		recent.append('<tr><td><b> Word </b></td>')
+		recent.append('<tr><td align="center"><b> Word </b></td>')
 		count = 0
 		for q in reversed(last10):
 			if count<10:
@@ -168,11 +170,10 @@ def redirect_page():
 	user_name = user_document['name']
 	pic_link = user_document['picture']
 	link = user_document['link']
+#if user is not logging in for the first time during the session, get data of previous search history
 	if user_email in cache:
 		dict = cache[user_email][0]
 		last10 = cache[user_email][1]
-	for i in user_document:
-		print i, user_document[i]
 	logged_in = 'Logout'
 	return main()
 
@@ -181,11 +182,12 @@ def redirect_page():
 def logout():
 	global logged_in
 	global dict, user_email, last10
+#before logging out, update search history values for user in cache to be displayed upon next login
 	cache[user_email] = [dict, last10]
 	logged_in = 'Login'
 	user_email = ''
 	dict = {}
-	last10 = {}
+	last10 = []
 	redirect("https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080")
 	return main()
 
@@ -214,13 +216,17 @@ def search():
 	'''
     sign_out = '''
 	<div align = "right">
-	<h3>Welcome, $user_email</h3>
+	<h3>Welcome, $user_name</h3>
+	<img src = $pic_link alt = "profilepic" style = "width:100px;height:auto"/>	
+	<br>
 	<form action = "/logout" method = "get">
         <input id = "signin" type = "submit" value = "Sign Out">
         </form>
 	</div>
 	'''
-    sign_out = Template(sign_out).safe_substitute(user_email = user_email)
+    sign_out = Template(sign_out).safe_substitute(user_name = user_name, pic_link = pic_link)
+
+#if search term contains more than one word, display results table
     if len(l)>1:
         results = ['''
             <center>
@@ -297,11 +303,14 @@ def updateHistory(l,dict):
             dict[i] += 1
 
 def updateLast10(l, last10):
+#inputs: list l containing search terms, list last10 that will hold most recent search terms: the last term in the list being the most recent
 	for i in l:
 		if i in last10:
 			last10.remove(i)
 			last10.append(i)
 		else:
+			print l
+			print last10
 			last10.append(i)
 
 #run localhost
