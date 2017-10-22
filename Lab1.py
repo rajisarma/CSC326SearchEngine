@@ -22,9 +22,14 @@ with open("client_secrets.json") as json_file:
 #map search history to user individual dict
 #10 most recently searched (stack?)
 
+cache = {}
 dict = {}
+last10 = []
 logged_in = 'Login'
 user_email = ''
+user_name = ''
+pic_link = ''
+
 
 @route('/', 'GET')
 
@@ -39,17 +44,17 @@ def main():
 	'''
     sign_out = '''
 	<div align = "right">
-	<h3>Welcome, $user_email</h3>
+	<h3>Welcome, $user_name</h3>
+	<img src = $pic_link alt = "profilepic" style = "width:100px;height:auto"/>	
+	<br>
 	<form action = "/logout" method = "get">
         <input id = "signin" type = "submit" value = "Sign Out">
         </form>
 	</div>
 	'''
-    sign_out = Template(sign_out).safe_substitute(user_email = user_email)
+    sign_out = Template(sign_out).safe_substitute(user_name = user_name, pic_link = pic_link)
     f ='''
-        <br><br><br>
-        <br><br><br>
-        <br><br><br>
+        <br><br><br><br>
         <style>
         table {
         border-collapse: collapse;
@@ -82,7 +87,8 @@ def main():
         </form>
         </center>
         '''
-    if bool(dict):
+
+    if bool(dict) and logged_in == 'Logout':
         i=0
         history = ['<center><br><br><b>Search History:</b><br><br><table id = "history">']
         history.append('<tr><td><b> Word </b></td>')
@@ -93,8 +99,33 @@ def main():
                 history.append('<td align="center"> %d </td></tr>' % dict[k])
                 i += 1
         history.append('</table></center>')
+
+	if len(last10)>0:
+		recent = ['''
+            <center>
+            <style>
+            table {
+                border-collapse: collapse;
+                border: 1px solid black; 
+            }
+            th, td {
+            padding: 10px;
+            }
+            </style>
+            <br><b>Most Recent Searches:</b><br><br>
+            <body bgcolor = "#F0B27A">
+            <table id = "recent">
+            ''']
+		recent.append('<tr><td><b> Word </b></td>')
+		count = 0
+		for q in reversed(last10):
+			if count<10:
+				recent.append('<tr><td align="center">%s</td>' %q)
+				count += 1
+		recent.append('</table></center>')
+
 	if logged_in == 'Logout':
-	        return sign_out, f, '\n'.join(history)
+	        return sign_out, f, '\n'.join(history), '\n'.join(recent)
 	else:
 		return sign_in, f
     else:
@@ -119,9 +150,9 @@ def login():
 @route('/redirect')
 def redirect_page():
 	global logged_in
-	global user_email
-	global token
+	global user_email, user_name, pic_link, link
 	global http
+	global dict, last10
 	code = request.query.get('code','')
 
 	flow = OAuth2WebServerFlow(client_id = CLIENT_ID, client_secret = CLIENT_SECRET, scope = GOOGLE_SCOPE, redirect_uri = REDIRECT_URI)
@@ -134,8 +165,14 @@ def redirect_page():
 	users_service = build('oauth2', 'v2', http=http)
 	user_document = users_service.userinfo().get().execute()
 	user_email = user_document['email']
-	#for i in user_document:
-	#	print i, user_document[i]
+	user_name = user_document['name']
+	pic_link = user_document['picture']
+	link = user_document['link']
+	if user_email in cache:
+		dict = cache[user_email][0]
+		last10 = cache[user_email][1]
+	for i in user_document:
+		print i, user_document[i]
 	logged_in = 'Logout'
 	return main()
 
@@ -143,8 +180,12 @@ def redirect_page():
 @route('/logout', method='GET')
 def logout():
 	global logged_in
+	global dict, user_email, last10
+	cache[user_email] = [dict, last10]
 	logged_in = 'Login'
 	user_email = ''
+	dict = {}
+	last10 = {}
 	redirect("https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080")
 	return main()
 
@@ -152,6 +193,7 @@ def logout():
 @route('/search', method='GET')
 def search():
     global logged_in
+    global last10
     string = request.query['keywords']
     string = re.sub(r'[^\w\s]','',string)   #filter punctuation
     l = string.lower().split()              #split by whitespaces
@@ -159,6 +201,7 @@ def search():
     updateHistory(l,cur)
     if logged_in == 'Logout':
     	updateHistory(l,dict)
+	updateLast10(l,last10)
     
     back = '<br><br><center><form action = "/"> <input id = "button" type = "submit" value = "Back"> </form></center>'
     #CSS formatting for results page
@@ -252,6 +295,14 @@ def updateHistory(l,dict):
             dict[i] = 1
         else:
             dict[i] += 1
+
+def updateLast10(l, last10):
+	for i in l:
+		if i in last10:
+			last10.remove(i)
+			last10.append(i)
+		else:
+			last10.append(i)
 
 #run localhost
 run(host='localhost', port=8080, debug=True)
