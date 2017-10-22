@@ -16,7 +16,7 @@ MAIN = "http://0.0.0.0:80/redirect"
 
 #for localhost:
 #HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080"
-HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://0.0.0.0:80"
+HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://ec2-54-156-234-124.compute-1.amazonaws.com"
 
 
 #from json file, get values needed to start login process
@@ -152,7 +152,7 @@ def main():
 def login():
 	global logged_in
 	if logged_in == "Login":
-		flow = flow_from_clientsecrets("client_secrets.json",scope = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email', redirect_uri = MAIN)
+		flow = flow_from_clientsecrets("client_secrets.json",scope = 'https://www.googleapis.com/auth/plus.me https://www.googleapis.com/auth/userinfo.email', redirect_uri = REDIRECT_URI)
 		uri = flow.step1_get_authorize_url()
 		redirect(str(uri))
 	else:
