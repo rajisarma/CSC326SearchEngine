@@ -23,7 +23,9 @@ import urllib2
 import urlparse
 from BeautifulSoup import *
 from collections import defaultdict
+from pageRank import page_rank
 import re
+import sqlite3
 
 def attr(elem, attr):
     """An html attribute from an html element. E.g. <a href="">, then
@@ -55,7 +57,13 @@ class crawler(object):
         self._url_queue = [ ]
         self._doc_id_cache = { }
         self._word_id_cache = { }
+	self._link_cache = []
         
+	#initialize and create the table in the SearchEngine database
+	self._db_conn = db_conn
+	self._cursor = db_conn.cursor()
+	self.create_database_tables()
+
         # functions to call when entering and exiting specific tags
         self._enter = defaultdict(lambda *a, **ka: self._visit_ignore)
         self._exit = defaultdict(lambda *a, **ka: self._visit_ignore)
@@ -128,6 +136,47 @@ class crawler(object):
         except IOError:
             pass
     
+    # create database tables
+    def create_database_tables(self):
+	print "creating databases"
+        # create Lexicon table which contain mappings between word id and word
+        self._cursor.execute('''CREATE TABLE IF NOT EXISTS Lexicon
+             (word_id INTEGER PRIMARY KEY, word TEXT NOT NULL UNIQUE);''')
+	# create Inverted index 
+        self._cursor.execute('''CREATE TABLE IF NOT EXISTS InvertedIndex
+             (word_id NOT NULL UNIQUE, doc_ids TEXT NOT NULL);''')
+	# create page rank
+        self._cursor.execute('''CREATE TABLE IF NOT EXISTS PageRank
+             (doc_id NOT NULL UNIQUE, page_rank FLOAT);''')
+	# create doc index
+        self._cursor.execute('''CREATE TABLE IF NOT EXISTS DocIndex
+             (doc_id INTEGER PRIMARY KEY, url TEXT NOT NULL UNIQUE);''')
+        self._db_conn.commit()
+
+    def _insert_inverted_index(self):
+	for word_id, doc_id_values in INVERTED_INDEX.iteritems():
+		self._cursor.execute('''INSERT INTO InvertedIndex(word_id,doc_ids)
+                  VALUES(?,?);''', (word_id,' '.join(str(doc_id) for doc_id in INVERTED_INDEX[word_id])))
+        	self._db_conn.commit()
+	self._cursor.execute('''SELECT * FROM InvertedIndex''')
+	results = self._cursor.fetchall()
+	for row in results:
+		print('{0} : {1}'.format(row[0],row[1]))
+
+    def _insert_page_ranks(self):
+    	if self._link_cache !=[]:
+		page_rank_dict = page_rank(self._link_cache)
+		for doc_id, page_rank_score in page_rank_dict.iteritems():
+			self._cursor.execute('''INSERT INTO PageRank(doc_id,page_rank)
+                  		VALUES(?,?);''', (doc_id, page_rank_score))
+        		self._db_conn.commit()
+		self._cursor.execute('''SELECT * FROM PageRank''')
+		results = self._cursor.fetchall()
+		for row in results:
+			print('{0} : {1}'.format(row[0],row[1]))
+	else:
+		pass	
+
     # TODO remove me in real version
     def _mock_insert_document(self, url):
         """A function that pretends to insert a url into a document db table
@@ -158,7 +207,15 @@ class crawler(object):
         #       2) query the lexicon for the id assigned to this word, 
         #          store it in the word id cache, and return the id.
 
-        word_id = self._mock_insert_word(word)
+	self._cursor.execute('''INSERT INTO Lexicon(word)
+                  VALUES(?);''', (word,))
+        self._db_conn.commit()
+        self._cursor.execute('''SELECT word_id from Lexicon where word = (?)''',(word,))
+        
+        word_id = self._cursor.fetchone()[0]
+	print "word id " + str(word_id) + " word " + word
+        #word_id = self._mock_insert_word(word)
+	WORD_DICT[word_id]=word
         self._word_id_cache[word] = word_id
         return word_id
     
@@ -170,8 +227,15 @@ class crawler(object):
         # TODO: just like word id cache, but for documents. if the document
         #       doesn't exist in the db then only insert the url and leave
         #       the rest to their defaults.
+        self._cursor.execute('''INSERT INTO DocIndex(url)
+                  VALUES(?);''', (url,))
+        self._db_conn.commit()
+        self._cursor.execute('''SELECT doc_id from DocIndex where url = (?)''',(url,))
         
-        doc_id = self._mock_insert_document(url)
+        doc_id = self._cursor.fetchone()[0]
+	print "doc id" + str(doc_id) + " doc " + url
+	URLDOC_DICT[doc_id]=url
+        #doc_id = self._mock_insert_document(url)
         self._doc_id_cache[url] = doc_id
         return doc_id
     
@@ -192,6 +256,8 @@ class crawler(object):
         """Add a link into the database, or increase the number of links between
         two pages in the database."""
         # TODO
+	print "ADD LINK!!!!! " + str(from_doc_id) + " " + str(to_doc_id)
+	self._link_cache.append((from_doc_id, to_doc_id))
 
     def _visit_title(self, elem):
         """Called when visiting the <title> tag."""
@@ -327,6 +393,8 @@ class crawler(object):
                 resolved_inverted_index[current_word].add(str(URLDOC_DICT[doc]))
         return resolved_inverted_index
 
+    
+		
     def crawl(self, depth=2, timeout=3):
         """Crawl the web!"""
         seen = set()
@@ -366,9 +434,17 @@ class crawler(object):
             finally:
                 if socket:
                     socket.close()
+	if INVERTED_INDEX != {}:
+		self._insert_inverted_index()
+	else:
+		pass
+	self._insert_page_ranks()
+	self._db_conn.close()
 
 if __name__ == "__main__":
-    bot = crawler(None, "urls.txt")
+    
+    db = sqlite3.connect("SearchEngine.db")
+    bot = crawler(db, "urls.txt")
     bot.crawl(depth=1)
     #printing the inverted and resolved inverted index dictionaries
     print bot.get_inverted_index()
