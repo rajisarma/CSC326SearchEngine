@@ -1,4 +1,4 @@
-from bottle import *#route, run, request
+from bottle import *
 from collections import OrderedDict
 import re
 from oauth2client.client import OAuth2WebServerFlow
@@ -137,7 +137,6 @@ def redirect_page():
 	logged_in = 'Logout'
 	return main()
 
-
 @route('/logout', method='GET')
 def logout():
 	global logged_in
@@ -161,28 +160,64 @@ def search():
 
     string = re.sub(r'[^\w\s]','',string)   #filter punctuation
     l = string.lower().split()              #split by whitespaces
-    
+
+#search by first word in database
     word = l[0]
-    #conn = sql.connect('test.db')
+#connect to database previously created using crawler
+    db = sql.connect("SearchEngine.db")
+    cursor = db.cursor()
 
-    #cursor = conn.cursor()
-    #cursor.execute("select doc_ids from lexicon inner join inverted_index on lexicon.word_id = inverted_index.word_id")
+#get urls in order of page_rank from database
+
+#get word_id of search word
+    cursor.execute("select word_id from Lexicon where word = (?)", (word,))
+    word_id = cursor.fetchone()[0]
+
+#get doc_ids corresponding to word_id
+    cursor.execute("select doc_ids from InvertedIndex where word_id = (?)", (word_id,))
+    doc_ids = cursor.fetchone()[0]
+
+#doc_ids is a string of numbers
+#for each doc_id, check if page rank exists
+    list_doc_ids = [int(e) for e in doc_ids.split()]
+    page_rank_dict = {}
+    for id in list_doc_ids:
+    	cursor.execute("select doc_id, page_rank from PageRank where doc_id = (?)", (id,))
+    	rank_result = cursor.fetchone()
+	if rank_result:
+		page_rank_dict[rank_result[0]] = rank_result[1]
+
+#get urls for doc_ids having page rank
+    url_dict = {}
+    for key in page_rank_dict:
+    	cursor.execute("select url from DocIndex where doc_id = (?)", (key,))
+    	url_result = cursor.fetchone()
+	url_dict[url_result[0]] = page_rank_dict[key]
+
+###test
+
+    for k in url_dict:
+    	print k, url_dict[k]
 
 
 
 
+#store urls in descending order of page rank in a list
 
-#if results found: else: call error handler:
-#list containing urls to be printed
+
+#find number of pages needed to display all results
     max_pages = len(test)/5
     if len(test)%5 > 0:
     	max_pages += 1
+#start at page 1
     current_page = 1
+#show navigation for pages
     result = paginate_results(keywords)
     return print_page(keywords,1)
 
 def paginate_results(keywords):
-	global test
+#displays navigation bar with page numbers to click through pages of results
+	global test, current_page
 	count = 0
 	layout = ['''
 	<style>
@@ -204,14 +239,22 @@ def paginate_results(keywords):
 	<nav> <div class = "pagination">
 	<center>
 	''']
+#left arrow for previous page if not displaying the first page
+	if current_page > 1:
+		layout.append('<a href = "keywords=%s&page_no=%d"> &laquo; </a>' %(keywords, (current_page-1)))
+#page numbers
 	for p in range(max_pages):
 		layout.append('<a href = "/keywords=%s&page_no=%d"> %d </a>' %(keywords,p+1,p+1))
+#right arrow for next page if not displaying the last page
+	if current_page <= max_pages-1:
+		layout.append('<a href = "keywords=%s&page_no=%d"> &raquo; </a>' %(keywords, (current_page+1)))
 	layout.append('<br></nav></div>')
 
 	return '\n'.join(layout)
 
 @route('/keywords=<keywords>&page_no=<page:int>', method = 'GET')
 def print_page(keywords, page):
+	global current_page
 	current_page = page
 	return result_template(test[5*page-5:5*page])
 
@@ -292,7 +335,7 @@ def result_template(list):
 
 
 @error(404)
-def error_404():
+def error_404(error):
     back = '<br><br><center><form action = "/"> <input id = "button" type = "submit" value = "Home"> </form></center>'
     string = '''
 		<center>

@@ -24,6 +24,9 @@ def query():
         <br>
         <br>
         <a href="/search">Second Page</a>
+	<a href="/third">3rd Page</a>
+	<a href="/fourth">4th Page</a>
+	<a href="/fifth">5th Page</a>
 	</body>
 	</HTML>
         '''
@@ -42,6 +45,60 @@ def search():
 	testing
 	<br>
 	Computer
+	</body>
+	</HTML>
+	'''
+        return string
+
+@route('/third', method='GET')
+def search():
+	string = '''
+	<HTML>
+	<body>
+	<br><br><br>
+	<br><br><br>
+	<br><br><br>
+	Testing
+	<br>
+	Language
+	<br>
+	Computers
+	</body>
+	</HTML>
+	'''
+        return string
+
+@route('/fourth', method='GET')
+def search():
+	string = '''
+	<HTML>
+	<body>
+	<br><br><br>
+	<br><br><br>
+	<br><br><br>
+	hello
+	<br>
+	testing
+	<br>
+	world
+	</body>
+	</HTML>
+	'''
+        return string
+
+@route('/fifth', method='GET')
+def search():
+	string = '''
+	<HTML>
+	<body>
+	<br><br><br>
+	<br><br><br>
+	<br><br><br>
+	lab
+	<br>
+	search
+	<br>
+	engine
 	</body>
 	</HTML>
 	'''
