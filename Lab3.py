@@ -35,6 +35,7 @@ user_email = ''
 user_name = ''
 pic_link = ''
 test = ['test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8', 'test9', 'test10', 'test11', 'test12']
+final = []
 current_page = 1
 max_pages = 0
 
@@ -153,7 +154,7 @@ def logout():
 
 @route('/search', method='GET')
 def search():
-    global logged_in, keywords, test, max_pages, current_page
+    global logged_in, keywords, test, max_pages, current_page, final
     string = request.query['keywords']
     l = string.split()
     keywords = '+'.join(l)
@@ -194,20 +195,21 @@ def search():
     	url_result = cursor.fetchone()
 	url_dict[url_result[0]] = page_rank_dict[key]
 
+    db.close()
+
 ###test
 
     for k in url_dict:
     	print k, url_dict[k]
 
-
-
-
 #store urls in descending order of page rank in a list
+    for l in sorted(url_dict,key=url_dict.get,reverse=True):
+    	final.append(l)
 
 
 #find number of pages needed to display all results
-    max_pages = len(test)/5
-    if len(test)%5 > 0:
+    max_pages = len(final)/5
+    if len(final)%5 > 0:
     	max_pages += 1
 #start at page 1
     current_page = 1
@@ -217,7 +219,7 @@ def search():
 
 def paginate_results(keywords):
 #displays navigation bar with page numbers to click through pages of results
-	global test, current_page
+	global test, current_page, final
 	count = 0
 	layout = ['''
 	<style>
@@ -256,7 +258,7 @@ def paginate_results(keywords):
 def print_page(keywords, page):
 	global current_page
 	current_page = page
-	return result_template(test[5*page-5:5*page])
+	return result_template(final[5*page-5:5*page])
 
 def result_template(list):
     global keywords
@@ -310,7 +312,7 @@ def result_template(list):
     result = paginate_results(keywords)
     urls = ['<ul>']
     for i in list:
-        urls.append('<li> %s </li>' %i)
+        urls.append('<li> <a href = "%s"> %s </a> </li>' %(i,i))
     urls.append('</ul>')
     string = '''
 		<style>
