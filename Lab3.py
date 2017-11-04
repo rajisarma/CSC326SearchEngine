@@ -11,13 +11,13 @@ from string import Template
 import sqlite3 as sql
 
 #for localhost
-MAIN = "http://localhost:8080/redirect"
+#MAIN = "http://localhost:8080/redirect"
 #for AWS instance
-#MAIN = "http://0.0.0.0:80/redirect"
+MAIN = "http://0.0.0.0:80/redirect"
 
 #for localhost:
-HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080"
-#HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://0.0.0.0:80"
+#HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080"
+HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://0.0.0.0:80"
 
 
 #from json file, get values needed to start login process
@@ -34,7 +34,6 @@ logged_in = 'Login'
 user_email = ''
 user_name = ''
 pic_link = ''
-test = ['test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8', 'test9', 'test10', 'test11', 'test12']
 final = []
 current_page = 1
 max_pages = 0
@@ -154,7 +153,7 @@ def logout():
 
 @route('/search', method='GET')
 def search():
-    global logged_in, keywords, test, max_pages, current_page, final
+    global logged_in, keywords, max_pages, current_page, final
     string = request.query['keywords']
     l = string.split()
     keywords = '+'.join(l)
@@ -164,15 +163,18 @@ def search():
 
 #search by first word in database
     word = l[0]
+
 #connect to database previously created using crawler
     db = sql.connect("SearchEngine.db")
     cursor = db.cursor()
 
-#get urls in order of page_rank from database
-
 #get word_id of search word
     cursor.execute("select word_id from Lexicon where word = (?)", (word,))
-    word_id = cursor.fetchone()[0]
+    word_id = cursor.fetchone()
+    if word_id:
+    	word_id = word_id[0]
+    else:
+	return error404("error")
 
 #get doc_ids corresponding to word_id
     cursor.execute("select doc_ids from InvertedIndex where word_id = (?)", (word_id,))
@@ -194,15 +196,11 @@ def search():
     	cursor.execute("select url from DocIndex where doc_id = (?)", (key,))
     	url_result = cursor.fetchone()
 	url_dict[url_result[0]] = page_rank_dict[key]
-
     db.close()
 
-###test
-
-    for k in url_dict:
-    	print k, url_dict[k]
-
 #store urls in descending order of page rank in a list
+#clear list of any previous searches
+    final = []
     for l in sorted(url_dict,key=url_dict.get,reverse=True):
     	final.append(l)
 
@@ -217,9 +215,10 @@ def search():
     result = paginate_results(keywords)
     return print_page(keywords,1)
 
+
 def paginate_results(keywords):
 #displays navigation bar with page numbers to click through pages of results
-	global test, current_page, final
+	global current_page, final
 	count = 0
 	layout = ['''
 	<style>
@@ -229,13 +228,13 @@ def paginate_results(keywords):
 	text-decoration: none;
 	}
 	.pagination a.active {
-	background-color: #0000FF;
+	background-color: #9ACD32;
 	color = white;
-	border-radius: 5px;
+	border-radius: 3px;
 	}
 	.pagination a:hover:not(.active) {
 	background-color: #ddd;
-	border-radius: 5px;
+	border-radius: 3px;
 	}
 	</style>
 	<nav> <div class = "pagination">
@@ -243,13 +242,17 @@ def paginate_results(keywords):
 	''']
 #left arrow for previous page if not displaying the first page
 	if current_page > 1:
-		layout.append('<a href = "keywords=%s&page_no=%d"> &laquo; </a>' %(keywords, (current_page-1)))
+		layout.append('<b><a href = "keywords=%s&page_no=%d"> &laquo; </a></b>' %(keywords, (current_page-1)))
 #page numbers
 	for p in range(max_pages):
-		layout.append('<a href = "/keywords=%s&page_no=%d"> %d </a>' %(keywords,p+1,p+1))
+		if current_page == p+1:
+			layout.append('<b><a class = "active" href = "/keywords=%s&page_no=%d"> %d </a></b>' %(keywords,p+1,p+1))
+		else:
+			layout.append('<b><a href = "/keywords=%s&page_no=%d"> %d </a></b>' %(keywords,p+1,p+1))
+			
 #right arrow for next page if not displaying the last page
 	if current_page <= max_pages-1:
-		layout.append('<a href = "keywords=%s&page_no=%d"> &raquo; </a>' %(keywords, (current_page+1)))
+		layout.append('<b><a href = "keywords=%s&page_no=%d"> &raquo; </a></b>' %(keywords, (current_page+1)))
 	layout.append('<br></nav></div>')
 
 	return '\n'.join(layout)
@@ -310,10 +313,10 @@ def result_template(list):
 	'''
     sign_out = Template(sign_out).safe_substitute(user_name = user_name, pic_link = pic_link)
     result = paginate_results(keywords)
-    urls = ['<ul>']
+    urls = ['<br><br><div style = "display: inline-block; text-align: left;"><ul style="list-style-type:none">']
     for i in list:
-        urls.append('<li> <a href = "%s"> %s </a> </li>' %(i,i))
-    urls.append('</ul>')
+        urls.append('<li> <a href = "%s"> %s </a> </li><br>' %(i,i))
+    urls.append('</ul></div>')
     string = '''
 		<style>
 	        #signin {
@@ -337,7 +340,7 @@ def result_template(list):
 
 
 @error(404)
-def error_404(error):
+def error404(error):
     back = '<br><br><center><form action = "/"> <input id = "button" type = "submit" value = "Home"> </form></center>'
     string = '''
 		<center>
@@ -353,6 +356,6 @@ def error_404(error):
 		<body bgcolor = "#F0B27A"> This page does not exist </body></center>'''
     return string, back
 
-#run(host='0.0.0.0',port=80, debug=True)
+run(host='0.0.0.0',port=80, debug=True)
 #run localhost
-run(host='localhost', port=8080, debug=True)
+#run(host='localhost', port=8080, debug=True)
