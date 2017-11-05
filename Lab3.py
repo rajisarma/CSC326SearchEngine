@@ -11,13 +11,13 @@ from string import Template
 import sqlite3 as sql
 
 #for localhost
-MAIN = "http://localhost:8080/redirect"
+#MAIN = "http://localhost:8080/redirect"
 #for AWS instance
-#MAIN = "http://0.0.0.0:80/redirect"
+MAIN = "http://0.0.0.0:80/redirect"
 
 #for localhost:
-HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080"
-#HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://ec2-34-196-113-147.compute-1.amazonaws.com/"
+#HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080"
+HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://ec2-34-196-113-147.compute-1.amazonaws.com"
 
 
 #from json file, get values needed to start login process
@@ -359,6 +359,6 @@ def error404(error):
 		<body bgcolor = "#F0B27A"> This page does not exist </body></center>'''
     return string, back
 
-#run(host='0.0.0.0',port=80, debug=True)
+run(host='0.0.0.0',port=80, debug=True)
 #run localhost
-run(host='localhost', port=8080, debug=True)
+#run(host='localhost', port=8080, debug=True)
