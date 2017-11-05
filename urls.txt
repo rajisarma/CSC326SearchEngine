@@ -1,1 +1,2 @@
-http://www.eecg.toronto.edu
+http://sdraper.ece.wisc.edu/
+https://www.nal.utoronto.ca/

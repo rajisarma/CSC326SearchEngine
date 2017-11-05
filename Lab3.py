@@ -17,7 +17,7 @@ MAIN = "http://0.0.0.0:80/redirect"
 
 #for localhost:
 #HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080"
-HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://0.0.0.0:80"
+HOME_LINK = "https://accounts.google.com/logout?continue=https://appengine.google.com/_ah/logout?continue=http://ec2-34-196-113-147.compute-1.amazonaws.com"
 
 
 #from json file, get values needed to start login process
